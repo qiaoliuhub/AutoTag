@@ -4,15 +4,15 @@ The objective of this pipeline is to enable autotagging of stack overflow questi
 # Sample datasets
 
 <p align="center">
-  <img src="/bigData/sample_dataset.png" width="900"/>
+  <img src="/sample_dataset.png" width="900"/>
 </p>
 
 # Tag
 <p align="center">
-  <img src="/bigData/tag.png" width="900"/>
+  <img src="/tag.png" width="900"/>
 </p>
 
 # Pipeline
 <p align="center">
-  <img src="/bigData/pipeline.png" width="900"/>
+  <img src="/pipeline.png" width="900"/>
 </p>
