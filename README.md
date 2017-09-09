@@ -29,4 +29,7 @@ Use TF-IDF to form a vector for each questions or answers:
   <img src="/data_exlporation.png" width="900"/>
 </p>
 
+# Batch process (model_generation.py)
+1. Extract text features using TF-IDF
+2. Train a Naive bayes classifier to do multiclass classfication 
 
