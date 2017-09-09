@@ -4,17 +4,17 @@ The objective of this pipeline is to enable autotagging of stack overflow questi
 # Sample datasets
 
 <p align="center">
-  <img src="/bigData/sample_dataset.png" width="900"/>
+  <img src="/sample_dataset.png" width="900"/>
 </p>
 
 # Tag
 <p align="center">
-  <img src="/bigData/tag.png" width="900"/>
+  <img src="/tag.png" width="900"/>
 </p>
 
 # Pipeline
 <p align="center">
-  <img src="/bigData/pipeline.png" width="900"/>
+  <img src="/pipeline.png" width="900"/>
 </p>
 
 # Explore the data set
@@ -26,7 +26,7 @@ Use TF-IDF to form a vector for each questions or answers:
 2. IDF(inverted document frequency) is a measurement of whether a word is common or rare in the whole documents
 
 <p align="center">
-  <img src="/bigData/data_exploration.png" width="900"/>
+  <img src="/data_exploration.png" width="900"/>
 </p>
 
 
