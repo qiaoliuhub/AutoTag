@@ -26,7 +26,7 @@ Use TF-IDF to form a vector for each questions or answers:
 2. IDF(inverted document frequency) is a measurement of whether a word is common or rare in the whole documents
 
 <p align="center">
-  <img src="/data_exploration.png" width="900"/>
+  <img src="/data_exlporation.png" width="900"/>
 </p>
 
 
