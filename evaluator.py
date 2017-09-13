@@ -17,7 +17,7 @@ from pyspark.sql.functions import udf, col
 
 
 logging.basicConfig()
-logger=logging.getLogger('model_generation')
+logger=logging.getLogger('model_evaluate')
 logger.setLevel(logging.DEBUG)
 
 config=ConfigParser.ConfigParser()
@@ -47,7 +47,6 @@ if __name__ == '__main__':
 		logger.debug("Initializing Spark cluster")
 		conf=SparkConf().setAppName('model_generation').setMaster(master)
 		sc=SparkContext(conf=conf)
-		sc.setLogLevel('INFO')
 		logger.debug("Created Spark cluster successfully")
 	except:
 		logger.error("Fail to initialize spark cluster")
@@ -82,21 +81,17 @@ if __name__ == '__main__':
 
 	# tokenize post texts and get term frequency and inverted document frequency
 	logger.debug("Start to generate TFIDF features")
-	tokenizer=Tokenizer(inputCol="Body", outputCol="Words")
+	tokenizer=Tokenizer.load(tokenizer_file)
 	tokenized_words=tokenizer.transform(training_df.na.drop(how = 'any'))
-	tokenizer.save(tokenizer_file)
-	hashing_TF=HashingTF(inputCol="Words", outputCol="Features", numFeatures=200000)#, numFeatures=200
-	hashing_TF.save(hashing_tf_file)
+	hashing_TF=HashingTF.load(hashing_tf_file)
 	TFfeatures=hashing_TF.transform(tokenized_words.na.drop(how = 'any'))
 
-	idf=IDF(inputCol="Features", outputCol="IDF_features")
-	idfModel=idf.fit(TFfeatures.na.drop())
-	idfModel.save(idf_model_file)
+	idfModel=IDFModel.load(idf_model_file)
 	TFIDFfeatures=idfModel.transform(TFfeatures.na.drop(how = 'any'))
 	logger.debug("Get TFIDF features successfully")
 
 	# for feature in TFIDFfeatures.select("IDF_features", "Tag").take(3):
-	# 	logger.info(feature) =
+	# 	logger.info(feature) 
 
 	# register shutdown_hook
 	atexit.register(shutdown_hook, spark_session=spark)
@@ -104,13 +99,10 @@ if __name__ == '__main__':
 	# Row(IDF_features=SparseVector(200, {7: 2.3773, 9: 2.1588, 32: 2.0067, 37: 1.7143, 49: 2.6727, 59: 2.9361, 114: 1.0654, 145: 2.9522, 167: 2.3751}), Tag=u'asp.net')
 	# Trasfer data to be in labeled point format
 
-	labeled_points=TFIDFfeatures.rdd.map(lambda row: (float(tags_to_catId.value[row.Tag]), row.IDF_features, row.Id)).toDF()
-	training, test=labeled_points.randomSplit([0.7, 0.3], seed=0)
+	test=TFIDFfeatures.rdd.map(lambda row: (float(tags_to_catId.value[row.Tag]), row.IDF_features, row.Id)).toDF()
 
 	# Train Naive Bayes model
-	nb=NaiveBayes(smoothing=1.0, modelType="multinomial", labelCol='_1', featuresCol='_2')
-	nb_model=nb.fit(training)
-	nb_model.save(nb_model_file)
+	nb_model=NaiveBayesModel.load(nb_model_file)
 
 	# Evaluation the model
 	# test_df=test.rdd.map(lambda row: ((row._2, row._3),[row._1])).reduceByKey(lambda a,b: a+b)
