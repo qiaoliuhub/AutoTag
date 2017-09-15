@@ -14,6 +14,7 @@ from pyspark.ml.linalg import Vectors
 from pyspark.ml.classification import NaiveBayes, NaiveBayesModel
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 from pyspark.sql.functions import udf, col
+from pyspark.sql.types import FloatType, StringType
 
 
 logging.basicConfig()
@@ -85,7 +86,7 @@ if __name__ == '__main__':
 	tokenizer=Tokenizer(inputCol="Body", outputCol="Words")
 	tokenized_words=tokenizer.transform(training_df.na.drop(how = 'any'))
 	tokenizer.save(tokenizer_file)
-	hashing_TF=HashingTF(inputCol="Words", outputCol="Features", numFeatures=200000)#, numFeatures=200
+	hashing_TF=HashingTF(inputCol="Words", outputCol="Features", numFeatures=200)#, numFeatures=200
 	hashing_TF.save(hashing_tf_file)
 	TFfeatures=hashing_TF.transform(tokenized_words.na.drop(how = 'any'))
 
@@ -104,11 +105,14 @@ if __name__ == '__main__':
 	# Row(IDF_features=SparseVector(200, {7: 2.3773, 9: 2.1588, 32: 2.0067, 37: 1.7143, 49: 2.6727, 59: 2.9361, 114: 1.0654, 145: 2.9522, 167: 2.3751}), Tag=u'asp.net')
 	# Trasfer data to be in labeled point format
 
-	labeled_points=TFIDFfeatures.rdd.map(lambda row: (float(tags_to_catId.value[row.Tag]), row.IDF_features, row.Id)).toDF()
+	tags_to_catId_transform = udf(lambda tag: float(tags_to_catId.value[tag]), FloatType())
+	catId_to_tags_transform = udf(lambda catId: catId_to_tags.value[int(catId)], StringType())
+
+	labeled_points=TFIDFfeatures.withColumn('CatId', tags_to_catId_transform('Tag')) # rdd.map(lambda row: (float(tags_to_catId.value[row.Tag]), row.IDF_features, row.Id)).toDF()
 	training, test=labeled_points.randomSplit([0.7, 0.3], seed=0)
 
 	# Train Naive Bayes model
-	nb=NaiveBayes(smoothing=1.0, modelType="multinomial", labelCol='_1', featuresCol='_2')
+	nb=NaiveBayes(smoothing=1.0, modelType="multinomial", labelCol='TagId', featuresCol='IDF_features')
 	nb_model=nb.fit(training)
 	nb_model.save(nb_model_file)
 
@@ -117,7 +121,7 @@ if __name__ == '__main__':
 	# print test_df.collect()
 
 	predictions=nb_model.transform(test)
-	evaluator=MulticlassClassificationEvaluator(labelCol="_1", predictionCol="prediction", metricName="accuracy")
+	evaluator=MulticlassClassificationEvaluator(labelCol="TagId", predictionCol="prediction", metricName="accuracy")
 	accuracy = evaluator.evaluate(predictions)
 	print("Test set accuracy = " + str(accuracy/0.6023699978752843))
 
@@ -125,17 +129,4 @@ if __name__ == '__main__':
 	# accuracy = 1.0 * prediction_and_label.filter(lambda x: 1.0 if x[0] == x[1] else 0.0).count() / test.count()
 
 	
-
-
-
-
-
-
-
-
-
-	
-
-
-
 

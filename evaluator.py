@@ -81,10 +81,10 @@ if __name__ == '__main__':
 
 	# tokenize post texts and get term frequency and inverted document frequency
 	logger.debug("Start to generate TFIDF features")
-	tokenizer=Tokenizer.load(tokenizer_file)
+	tokenizer=Tokenizer.load(tokenizer_file)h
 	tokenized_words=tokenizer.transform(training_df.na.drop(how = 'any'))
 	hashing_TF=HashingTF.load(hashing_tf_file)
-	TFfeatures=hashing_TF.transform(tokenized_words.na.drop(how = 'any'))
+	TFfeatures=hashing_TF.transform(tokenized_words.na.drop(how = 'any'))i
 
 	idfModel=IDFModel.load(idf_model_file)
 	TFIDFfeatures=idfModel.transform(TFfeatures.na.drop(how = 'any'))
@@ -117,17 +117,4 @@ if __name__ == '__main__':
 	# accuracy = 1.0 * prediction_and_label.filter(lambda x: 1.0 if x[0] == x[1] else 0.0).count() / test.count()
 
 	
-
-
-
-
-
-
-
-
-
-	
-
-
-
 
