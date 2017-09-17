@@ -13,16 +13,16 @@ from kafka.errors import KafkaError
 from pyspark.ml.feature import Tokenizer, HashingTF, IDFModel
 from pyspark.ml.classification import NaiveBayesModel
 from pyspark.sql.functions import udf
-from pyspark.sql.types import StringType, FloatTypex
+from pyspark.sql.types import StringType, FloatType
 
 #Set up logger
-logging.BasicConfig()
+logging.basicConfig()
 logger = logging.getLogger('Streaming_prediction')
 logger.setLevel(logging.DEBUG)
 
 # set up configuration file parser
 config = ConfigParser.ConfigParser()
-config.read('streaming_prediction')
+config.read('streaming_prediction.cfg')
 
 master = config.get('spark', 'master')
 broker_ip = config.get('kafka', 'broker_ip')
@@ -33,17 +33,16 @@ tokenizer_file = config.get('io', 'tokenizer_file')
 hashing_tf_file = config.get('io', 'hashing_tf_file')
 idf_model_file = config.get('io', 'idf_model_file')
 nb_model_file = config.get('io', 'nb_model_file')
+selected_tags_file=config.get('io', 'selected_tags_file')
 
 idf_model = None
 nb_model = None
 hashing_tf = None
 tokenizer = None
-
-tags_to_catId_transform = None
 catId_to_tags_transform = None
 
 
-def process_data(dStream, kafka_producer):
+def process_data(rdd, kafka_producer):
 
 	def features_extraction(df):
 		# Extract featrues
@@ -52,8 +51,8 @@ def process_data(dStream, kafka_producer):
 			words_df = tokenizer.transform(df)
 			tf_features_df = hashing_tf.transform(words_df)
 			tf_idf_features_df = idf_model.transform(tf_features_df)
-			logger.debug('Extract features successfully')
-			return tf_features_df
+			logger.debug('Extract features successfully' )
+			return tf_idf_features_df
 		except:
 			logger.warn('Fail to extract features from Questions')
 
@@ -61,28 +60,32 @@ def process_data(dStream, kafka_producer):
 		# Predict the tags according to extracted features
 		try:
 			logger.debug('Predicting data tag')
-			post_data = df.withColumn('CatId', tags_to_catId_transform('Tag'))
-			prediction = nb_model.transform(post_data)
-			output_data = prediction.withColumn('Predicted_tag', catId_to_tags('CatId'))
+			prediction = nb_model.transform(df)
 			logger.debug('Predicted tags are generated')
+			logger.debug('Transform catId to tags')
+			output_data = prediction.withColumn('tags', catId_to_tags_transform('prediction')).drop('Features', 'IDF_features','prediction','rawPrediction','Words', 'probability')
+			logger.debug('Transform catId to tas successfully')
 			return output_data
 		except:
 			logger.warn('Fail to predict tags')
 
 	# Write data back to Kafka producer
-	def persist_data(row):
-		tagged_data = json.dumps(row.asDict())
-		try:
-			logger.debug('Wrting data to Kafka topic %s' % kafka_output_topic)
-			kafka_producer.send(kafka_output_topic, value=tagged_data)
-			logger.info('sent data successfully')
-		except:
-			logger.debug('Fail to send stock data %s' % tagged_data)
+	def persist_data(df):
+		posts = df.toJSON().collect()
+		for r in posts:
+			try:
+				logger.debug('Wrting data to Kafka topic %s' % kafka_output_topic)
+				kafka_producer.send(kafka_output_topic, value=r.encode('utf-8'))
+				logger.info('sent data successfully')
+			except KafkaError as ke:
+				logger.debug('Fail to send stock data, caused by %s' %ke.message)
 
-	stream_df = spark.read.json(dStream)
+	if rdd.isEmpty():
+		return
+	stream_df = spark.read.json(rdd)
 	features_df = features_extraction(stream_df)
 	predictions = predict_tag(features_df)
-	predictions.foreach(persist_data)
+	persist_data(predictions)
 
 
 # Create shut down hook
@@ -96,7 +99,7 @@ def shutdown_hook(kafka_producer, spark):
 	except KafkaError as ke:
 		logger.warn('Fail to stop kafka producer, caused by %s' % ke.message)
 
-	try;
+	try:
 		logger.debug('Shut down spark context')
 		spark.close()
 		logger.debug('Stop spark successfully')
@@ -112,13 +115,10 @@ if __name__ == '__main__':
 		conf = SparkConf().setAppName('Streaming_prediction').setMaster(master)
 		sc = SparkContext(conf=conf)
 		sc.setLogLevel('INFO')
-		ssc = StreamingContext(sc, 5)
+		ssc = StreamingContext(sc, 10)
 		logger.debug('Initialize spark context and sparkstreamingcontext successfully')
 	except Exception as e:
 		logger.debug('Fail to start spark context and sparkstreamingcontext')
-		raise
-	finally:
-		sc.close()
 
 	# Start a sparksession
 	try:
@@ -139,34 +139,57 @@ if __name__ == '__main__':
 
 	try:
 		# Create dstream from kafka topic
-		directKafkaStream = KafkaUtils.createDirectStream(ssc, kafka_topic, {'metadata.broker.list' = broker_ip})
+		directKafkaStream = KafkaUtils.createDirectStream(ssc, [kafka_topic], {'metadata.broker.list':broker_ip})
 		logger.debug('Create direct dstream from kafka successfully')
-	except:
-		logger.debug('Unable to create dstream from kafka')
+	except Exception as e:
+		logger.debug('Unable to create dstream from kafka, caused by %s', e.message)
 
 	atexit.register(shutdown_hook, kafka_producer, spark)
 
 	# Load in idf_model, nb_model, hashing_tf, idf_model and tag_catId map
 	try:
-		logger.debug('Loading models')
+		logger.debug('Loading tokenizer model')
 		tokenizer = Tokenizer.load(tokenizer_file)
-		hashing_tf = HashingTF.load(hashing_tf_file)
-		idf_model = IDFModel.load(idf_model_file)
-		nb_model = NaiveBayesModel.load(nb_model_file)
-		selected_tags = pd.read_csv(selected_tags_file, header=None)
-		local_catId_to_tags = dict(zip(list(selected_tags.index), selected_tags[0]))
-		local_tags_to_catId=dict(zip(selected_tags[0], list(selected_tags.index)))
-		catId_to_tags = sc.broadcast(local_catId_to_tags)
-		tags_to_catId = sc.broadcast(local_tags_to_catId)
-		tags_to_catId_transform = udf(lambda tag: float(tags_to_catId.value[tag]), FloatType())
-		catId_to_tags_transform = udf(lambda catId: catId_to_tags.value[catId], StringType())
-		logger.debug('loaded models successfully')
+		logger.debug('Load tokenizer model successfully')
 	except:
-		logger.debug('Fail to load models')
+		logger.debug('Fail to load tokenizer')
 
+	try:
+		logger.debug('Loading hashing_tf model')
+		hashing_tf = HashingTF.load(hashing_tf_file)
+		logger.debug('Load hashing_tf model successfully')
+	except:
+		logger.debug('Fail to load hashing_tf')
+
+	try:
+		logger.debug('Loading idf_model')
+		idf_model = IDFModel.load(idf_model_file)
+		logger.debug('Load IDFModel successfully')
+	except:
+		logger.debug('Fail to load IDFModel')
+
+	try:
+		logger.debug('Loading nb_model')
+		nb_model = NaiveBayesModel.load(nb_model_file)
+		logger.debug('Load NaiveBayesModel successfully')
+	except:
+		logger.debug('Fail to load NaiveBayesModel')
+
+	try:
+		logger.debug('Loading files')
+		selected_tags = pd.read_csv(selected_tags_file, header=None)
+		logger.debug('loaded files successfully ')
+	except:
+		logger.debug('Fail to load files')
+
+	local_catId_to_tags = dict(zip(list(selected_tags.index), selected_tags[0]))
+	catId_to_tags = sc.broadcast(local_catId_to_tags)
+	catId_to_tags_transform = udf(lambda catId: catId_to_tags.value[int(catId)], StringType())
 
 	logger.debug('Start to process data')
-	process_data(directKafkaStream, kafka_producer)
+	directKafkaStream.map(lambda dStream: dStream[1]).foreachRDD(lambda rdd: process_data(rdd, kafka_producer))
+	logger.debug('After function')
+
 	ssc.start()
 	ssc.awaitTermination()
 

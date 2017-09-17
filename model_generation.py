@@ -18,7 +18,7 @@ from pyspark.sql.types import FloatType, StringType
 
 
 logging.basicConfig()
-logger=logging.getLogger('model_generation')
+logger = logging.getLogger('model_generation')
 logger.setLevel(logging.DEBUG)
 
 config=ConfigParser.ConfigParser()
@@ -86,7 +86,7 @@ if __name__ == '__main__':
 	tokenizer=Tokenizer(inputCol="Body", outputCol="Words")
 	tokenized_words=tokenizer.transform(training_df.na.drop(how = 'any'))
 	tokenizer.save(tokenizer_file)
-	hashing_TF=HashingTF(inputCol="Words", outputCol="Features", numFeatures=200)#, numFeatures=200
+	hashing_TF=HashingTF(inputCol="Words", outputCol="Features", numFeatures=20000)#, numFeatures=200
 	hashing_TF.save(hashing_tf_file)
 	TFfeatures=hashing_TF.transform(tokenized_words.na.drop(how = 'any'))
 
@@ -112,7 +112,7 @@ if __name__ == '__main__':
 	training, test=labeled_points.randomSplit([0.7, 0.3], seed=0)
 
 	# Train Naive Bayes model
-	nb=NaiveBayes(smoothing=1.0, modelType="multinomial", labelCol='TagId', featuresCol='IDF_features')
+	nb=NaiveBayes(smoothing=1.0, modelType="multinomial", labelCol='CatId', featuresCol='IDF_features')
 	nb_model=nb.fit(training)
 	nb_model.save(nb_model_file)
 
@@ -121,7 +121,7 @@ if __name__ == '__main__':
 	# print test_df.collect()
 
 	predictions=nb_model.transform(test)
-	evaluator=MulticlassClassificationEvaluator(labelCol="TagId", predictionCol="prediction", metricName="accuracy")
+	evaluator=MulticlassClassificationEvaluator(labelCol="CatId", predictionCol="prediction", metricName="accuracy")
 	accuracy = evaluator.evaluate(predictions)
 	print("Test set accuracy = " + str(accuracy/0.6023699978752843))
 
