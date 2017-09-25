@@ -1,7 +1,7 @@
 {
 	"Cassandra":{
-		"contactPoints" : ,
-		"keyspace": ,
-		"table": 
+		"contactPoints" : "localhost",
+		"keyspace": "autotag",
+		"table": "posts"
 	}
 }

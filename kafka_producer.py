@@ -2,6 +2,8 @@ import logging
 import ConfigParser
 import atexit
 import time
+import json
+from datetime import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from kafka import KafkaProducer
@@ -57,23 +59,25 @@ def shutdown_hook(kafka_producer, posts):
 
 @app.route('/home', methods=['POST'])
 def get_data():
+	data = request.form
 	logger.debug('I got the request')
 	# {"CreationDate": "CreationDate", "OwnerUserId": "OwnerUserId", "ClosedDate": "ClosedDate", "Id": "Id", "Body": "Body", "Title": "Title", "Score": "Score"}
-	data = request.form
 	if not data:
-		return 400
+		return jsonify({'error': 'data is empty'}), 400
 	# data : {"posts":posts, "id": id, "userid": userid}
 	kafka_data = {}
-	kafka_data["creationDate"] = time.time()
-	kafka_data["OwnerUserId"] = data["userid"]
+	kafka_data["CreationDate"] = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+	kafka_data["OwnerUserId"] = request.form["userid"]
 	kafka_data["ClosedDate"] = "NA"
 	kafka_data["Id"] = data["id"]
 	kafka_data["Body"] = data["posts"]
 	kafka_data["Title"] = "NA"
 	kafka_data["Score"] = "NA"
+	logger.debug("Fail to send data from nodejs %s" %data)
 	output_data = json.dumps(kafka_data)
 	send_to_broker(kafka_producer, output_data)
-	return 200
+	logger.debug("Send data %s successfully" %output_data)
+	return jsonify(results=kafka_data), 200
 
 # Simulate writing data to kafka broker
 def generate_data():

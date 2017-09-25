@@ -4,9 +4,8 @@ $(function(){
 	    if (predicted_tag == ''){
 	    	var data = {id: newpost_id};
 	    	$.ajax({
-      		url: "/home",
-      		type: 'GET',
-            data: data,
+	      		url: "/home/"+newpost_id,
+	      		type: 'GET',
 	      		success:function(data,status){
 	              if(status == 'success'){
 	              	var tag = data.tag;
@@ -25,6 +24,6 @@ $(function(){
 	      clearInterval(get_tag_func);
 	    }
   	}
-
-  	var get_tag_func = setInterval(function(){get_tag()}, 1000);
+  	var newpost_id = $('#newpost_id').val();
+  	var get_tag_func = setInterval(function(){get_tag(newpost_id)}, 100);
 });

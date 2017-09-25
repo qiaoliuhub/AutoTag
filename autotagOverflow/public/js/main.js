@@ -25,7 +25,7 @@ $(function() {
   $("#post-form").submit(function(e){
     e.preventDefault();
     var posts = $('#posts').val();
-    var id = Math.floor(Math.random() * 2000000);
+    var id = Math.floor(Math.random() * 32767);
     // default admin user id
     var userid = 1;
     var data = {"posts":posts, "id": id, "userid": userid};
@@ -40,13 +40,14 @@ $(function() {
             var post_id=data.post_id;
             var newcontainer='<h3 id = "newtitle" class="form-signin-heading">'+newtitle+'</h3>\
             <p><pre id="newpost" class="form-control">'+newpost+'</pre></p>\
-            <h3 class="form-signin-heading">Post ID</h3>\
-            <p class="form-control">'+post_id+'</p>\
+            <h3 id="title_id" class="form-signin-heading">Post ID</h3>\
+            <p id="newpost_id" class="form-control">'+post_id+'</p>\
             <h3 class="form-signin-heading">Tag</h3>\
-            <p id= predicted_tag class="form-control"></p>\
+            <p id= "predicted_tag" class="form-control"></p>\
             <a href="/home" class="btn btn-lg btn-primary btn-block">Try More</a>\
             <script src="/js/get_tag.js"></script>';
             $('#newcontainer').html(newcontainer);
+            $('#newpost_id').val(post_id);
           }
       },
       error:function(data, status){
@@ -59,9 +60,8 @@ $(function() {
     $.ajax({
       url:"http://localhost:5000/home",
       type:"POST",
-      // contentType: "application/json",
       dataType:"json",
-      data: JSON.stringify(data),
+      data:data,
       success:function(data,status){
         if (status == 'success'){
           alert('sent request successfully')

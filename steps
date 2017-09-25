@@ -1,0 +1,47 @@
+environment:
+python2.7
+package:
+pandas
+ConfigParser
+kafka
+pyspark
+apscheduler
+
+should have zookeeper, kafka, cassandra, spark installed
+
+start the kafka producer and flask web application on port 5000
+python kafka_producer.py
+
+create kafka topic posts (name can be changed in kafka_producer.cfg)
+./kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partition 1 --topic posts
+
+check the contents in topic posts with the command below:
+./kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partition 1 --topic posts
+
+
+
+start spark_streaming process to extract features with tf-idf and predict tag with trained naive bayes model, then write predicted tag back to another kafka topic (tagged_posts)
+1. create kafka topic tagged_posts
+./kafka-console-consumer.sh --zookeeper localhost:2181 --bootstrap-server localhost:9092 --topic tagged_posts
+2. need to have spark-streaming-kafka-0-8-assembly_2.11-2.0.0.jar 
+spark-submit --jars spark-streaming-kafka-0-8-assembly_2.11-2.0.0.jar streaming_prediction.py 
+
+check output data using kafka-console-consumer
+./kafka-console-consumer.sh --zookeeper localhost:2181 --bootstrap-server localhost:9092 --topic tagged_posts
+
+
+start another kafka consumer to persist data to cassandra (persist_data.py)
+python persist_data.py
+
+can check the data with 
+./cqlsh
+use autotag
+select * from posts limit 4
+
+{"Body":"attempts","ClosedDate":"NA","CreationDate":"2008-08-03T11:12:52Z","Id":"650","OwnerUserId":"143","Score":"79","Title":"Automatically update version number","tags":"visual-studio"}
+
+front end:
+start nodejs web server on port 3000
+node index.js
+
+One can access the front end using localhost:3000/home
