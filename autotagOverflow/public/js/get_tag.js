@@ -3,11 +3,14 @@ $(function(){
 	    var predicted_tag = $('#predicted_tag').val();
 	    if (predicted_tag == ''){
 	    	var data = {id: newpost_id};
+	    	var start_time = new Date().getTime();
 	    	$.ajax({
 	      		url: "/home/"+newpost_id,
 	      		type: 'GET',
 	      		success:function(data,status){
 	              if(status == 'success'){
+	              	var after_time = new Date().getTime();
+	              	alert((after_time - start_time) + 'ms')
 	              	var tag = data.tag;
 	                $('#predicted_tag').text(tag);
 		      		$('#predicted_tag').val(tag);
@@ -25,5 +28,5 @@ $(function(){
 	    }
   	}
   	var newpost_id = $('#newpost_id').val();
-  	var get_tag_func = setInterval(function(){get_tag(newpost_id)}, 100);
+  	var get_tag_func = setInterval(function(){get_tag(newpost_id)}, 1000);
 });

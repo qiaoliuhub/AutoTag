@@ -3,5 +3,9 @@
 		"contactPoints" : "localhost",
 		"keyspace": "autotag",
 		"table": "posts"
+	},
+	"Redis":{
+		"host" : "localhost",
+		"port" : "6379"
 	}
 }

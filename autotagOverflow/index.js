@@ -1,3 +1,5 @@
+//Using nodejs to build a web server
+
 var express = require('express');
 var app = express();
 var bodyParser = require('body-parser');
@@ -8,6 +10,7 @@ var path = require('path');
 var cassandra = require('cassandra-driver');
 var config = require('config');
 var session = require('express-session');
+var redis = require('redis');
 
 //Set up static directiory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -45,6 +48,11 @@ var keySpace = config.get('Cassandra.keyspace');
 var table = config.get('Cassandra.table');
 var cassandraClient = new cassandra.Client({contactPoints: [contactPointIP], keyspace: keySpace});
 
+//Set up redis client
+var redis_host = config.get('Redis.host');
+var redis_port = config.get('Redis.port');
+var redis_client = redis.createClient(redis_port, redis_host);
+
 //Set up route 
 app.get('/logout', function(req, res){
     req.session.user = null;
@@ -71,21 +79,31 @@ app.get('/home', function(req, res){
 
 app.get('/home/:post_id', function(req, res){
 
-	//get data from cassandra based on id
+	// get data from cassandra or redis based on id 
 	var post_id = req.params.post_id;
-	console.log('Retriving data for post_id %s', post_id);
 	var tag;
-	cassandraClient.execute("SELECT tag FROM "+table +" WHERE id = '" + post_id + "'", function(err, result){
-		if (!err){
-			if ( result.rows.length > 0 ) {
-               var user = result.rows[0];
-               var tag=user.tag;
-               res.send({tag: tag});
-           } else {
-               console.log("No results");
-           }
-		}
-	});
+  console.log('Retriving data for post_id %s', post_id);
+	// cassandraClient.execute("SELECT tag FROM "+table +" WHERE id = '" + post_id + "'", function(err, result){
+	// 	if (!err){
+	// 		if ( result.rows.length > 0 ) {
+ //               var user = result.rows[0];
+ //               var tag=user.tag;
+ //               res.send({tag: tag});
+ //           } else {
+ //               console.log("No results");
+ //           }
+	// 	}
+	// });
+  redis_client.hmget(post_id, 'tags', function(err, result){
+    if (!err){
+      if ( result.length > 0 ) {
+           var tag = result[0];
+           res.send({tag: tag});
+       } else {
+           console.log("No results");
+       }
+    }
+  });
 })
 
 app.post('/home', function(req, res){
