@@ -100,7 +100,7 @@ def generate_data():
 	while True:
 		for line in posts:
 			send_to_broker(kafka_producer, line,)
-			time.sleep(5)
+			time.sleep(2)
 
 if __name__ == '__main__':
 	

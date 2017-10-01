@@ -10,7 +10,7 @@ $(function(){
 	      		success:function(data,status){
 	              if(status == 'success'){
 	              	var after_time = new Date().getTime();
-	              	alert((after_time - start_time) + 'ms')
+	              	// alert('It takes '+(after_time - start_time) + 'ms to get the tag!')
 	              	var tag = data.tag;
 	                $('#predicted_tag').text(tag);
 		      		$('#predicted_tag').val(tag);

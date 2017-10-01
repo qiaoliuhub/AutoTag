@@ -83,27 +83,27 @@ app.get('/home/:post_id', function(req, res){
 	var post_id = req.params.post_id;
 	var tag;
   console.log('Retriving data for post_id %s', post_id);
-	// cassandraClient.execute("SELECT tag FROM "+table +" WHERE id = '" + post_id + "'", function(err, result){
-	// 	if (!err){
-	// 		if ( result.rows.length > 0 ) {
- //               var user = result.rows[0];
- //               var tag=user.tag;
- //               res.send({tag: tag});
- //           } else {
- //               console.log("No results");
- //           }
-	// 	}
-	// });
-  redis_client.hmget(post_id, 'tags', function(err, result){
-    if (!err){
-      if ( result.length > 0 ) {
-           var tag = result[0];
-           res.send({tag: tag});
-       } else {
-           console.log("No results");
-       }
-    }
-  });
+	cassandraClient.execute("SELECT tag FROM "+table +" WHERE id = '" + post_id + "'", function(err, result){
+		if (!err){
+			if ( result.rows.length > 0 ) {
+               var user = result.rows[0];
+               var tag=user.tag;
+               res.send({tag: tag});
+           } else {
+               console.log("No results");
+           }
+		}
+	});
+  // redis_client.hmget(post_id, 'tags', function(err, result){
+  //   if (!err){
+  //     if ( result.length > 0 ) {
+  //          var tag = result[0];
+  //          res.send({tag: tag});
+  //      } else {
+  //          console.log("No results");
+  //      }
+  //   }
+  // });
 })
 
 app.post('/home', function(req, res){

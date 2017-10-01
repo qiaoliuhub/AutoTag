@@ -1,6 +1,8 @@
 # Autotagging Overflow
 The objective of this pipeline is to enable autotagging of stack overflow questions and answers. The model will be trained with TF-IDF with Spark MLlib in batch processing. Then the model would be used to autotag the new coming questions from Kafka (latency?). Finally the data will be persisted in Cassandra to support the front end.
 
+<a href = https://youtu.be/WYg8NzZs4Us > DEMO </a>
+
 # Sample datasets
 
 <p align="center">
